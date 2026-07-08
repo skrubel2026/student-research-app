@@ -145,28 +145,32 @@ def save_all_decisions(edited_df):
 
 
 def find_application(student_id, email):
-    """Looks up a single application by Student ID + Email (both must match).
-    Returns (row_as_dict, row_index) or (None, None) if not found."""
+    """Looks up a single application by Student ID. If the stored record
+    already has an email on file, the given email must also match it (for
+    verification). If the stored record has no email yet (legacy
+    submissions from before the Email field existed), Student ID alone is
+    enough to find it, and the student can add their email during the edit.
+    Returns (row_as_dict, matched) or (None, None) if not found / mismatched."""
     df = load_applications()
     if df.empty:
         return None, None
-    match = df[
-        (df["Student ID"].astype(str).str.strip() == str(student_id).strip())
-        & (df["Email"].astype(str).str.strip().str.lower() == str(email).strip().lower())
-    ]
-    if match.empty:
+    id_match = df[df["Student ID"].astype(str).str.strip() == str(student_id).strip()]
+    if id_match.empty:
         return None, None
-    return match.iloc[0].to_dict(), match.index[0]
+    row = id_match.iloc[0]
+    stored_email = str(row.get("Email", "")).strip()
+    if stored_email:
+        if stored_email.lower() != str(email).strip().lower():
+            return None, None
+    return row.to_dict(), id_match.index[0]
 
 
-def update_application(student_id, email, updated_fields):
-    """Updates an existing application's editable fields in place, keeping
-    Decision, Notes, and the original Timestamp untouched."""
+def update_application(student_id, updated_fields):
+    """Updates an existing application's editable fields in place, keyed by
+    Student ID. Keeps Decision, Notes, and the original Timestamp untouched
+    unless explicitly included in updated_fields."""
     df = load_applications()
-    match_mask = (
-        (df["Student ID"].astype(str).str.strip() == str(student_id).strip())
-        & (df["Email"].astype(str).str.strip().str.lower() == str(email).strip().lower())
-    )
+    match_mask = df["Student ID"].astype(str).str.strip() == str(student_id).strip()
     if not match_mask.any():
         return False
     idx = df.index[match_mask][0]
@@ -293,7 +297,10 @@ def show_edit_application_form():
 
     with st.form("lookup_form"):
         lookup_id = st.text_input("Student ID")
-        lookup_email = st.text_input("Email Address")
+        lookup_email = st.text_input(
+            "Email Address",
+            help="If you didn't provide an email when you first applied, you can leave this blank — you'll be able to add it below.",
+        )
         find_clicked = st.form_submit_button("Find My Application")
 
     if find_clicked:
@@ -319,6 +326,12 @@ def show_edit_application_form():
 
     with st.form("edit_form"):
         name = st.text_input("Full Name *", value=row.get("Name", ""))
+        email = st.text_input(
+            "Email Address *",
+            value=row.get("Email", ""),
+            placeholder="you@example.com",
+            help="Add this if it wasn't captured when you first applied — it's needed so you can receive updates.",
+        )
 
         col_sem, col_year = st.columns(2)
         with col_sem:
@@ -400,11 +413,14 @@ def show_edit_application_form():
         update_clicked = st.form_submit_button("Update Application")
 
         if update_clicked:
-            if not name or not semester_choice or not subject_choice or not program_choice or not target_term:
+            if not name or not email or not semester_choice or not subject_choice or not program_choice or not target_term:
                 st.error("Please fill in all required fields marked with *.")
+            elif "@" not in email or "." not in email:
+                st.error("Please enter a valid email address.")
             else:
                 updated_fields = {
                     "Name": name,
+                    "Email": email,
                     "Current Semester": semester_choice,
                     "CGPA": cgpa,
                     "Program": program_choice,
@@ -415,7 +431,6 @@ def show_edit_application_form():
                 }
                 success = update_application(
                     st.session_state.edit_loaded_id,
-                    st.session_state.edit_loaded_email,
                     updated_fields,
                 )
                 if success:
