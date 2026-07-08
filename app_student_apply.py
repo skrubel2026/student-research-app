@@ -136,6 +136,7 @@ def get_worksheet():
     return ws
 
 
+@st.cache_data(ttl=20)
 def load_applications():
     ws = get_worksheet()
     records = ws.get_all_records()
@@ -148,6 +149,7 @@ def load_applications():
 def append_application(row_dict):
     ws = get_worksheet()
     ws.append_row([row_dict.get(col, "") for col in COLUMNS])
+    load_applications.clear()  # so the new row shows up immediately, not after 20s
 
 
 def save_all_decisions(edited_df):
@@ -156,6 +158,7 @@ def save_all_decisions(edited_df):
     values = [COLUMNS] + edited_df[COLUMNS].astype(str).values.tolist()
     ws.clear()
     ws.update(values)
+    load_applications.clear()  # so the change shows up immediately, not after 20s
 
 
 def find_application(student_id, email):
