@@ -14,6 +14,7 @@ WORKSHEET_NAME = "Applications"        # Name of the tab inside that spreadsheet
 
 COLUMNS = [
     "Timestamp", "Name", "Student ID", "Current Semester", "CGPA",
+    "Program", "Credit Hours Completed", "Target Semester",
     "Subject of Interest", "Prior Experience / Skills", "Decision", "Notes"
 ]
 
@@ -22,6 +23,7 @@ SUBJECT_OPTIONS = [
     "Pharmaceutics", "Pharmacology", "Pharmaceutical Chemistry",
     "Clinical Pharmacy", "Microbiology", "Biochemistry"
 ]
+PROGRAM_OPTIONS = ["BPharm", "MPharm"]
 DECISION_OPTIONS = ["Pending", "Selected", "Denied"]
 
 # ---------------------------------------------------------------------------
@@ -101,6 +103,31 @@ def show_application_form():
             "CGPA *", min_value=0.0, max_value=4.0, step=0.01, format="%.2f"
         )
 
+        col_prog, col_credit = st.columns(2)
+        with col_prog:
+            program_choice = st.selectbox(
+                "Program *", PROGRAM_OPTIONS + ["➕ Type a new value"]
+            )
+            if program_choice == "➕ Type a new value":
+                program_choice = st.text_input("Enter your program")
+        with col_credit:
+            credit_hours = st.number_input(
+                "Credit Hours Completed *", min_value=0, max_value=300, step=1
+            )
+
+        col_target_sem, col_target_year = st.columns(2)
+        with col_target_sem:
+            target_term = st.selectbox(
+                "Target Semester Term *", SEMESTER_OPTIONS + ["➕ Type a new value"]
+            )
+            if target_term == "➕ Type a new value":
+                target_term = st.text_input("Enter target semester term")
+        with col_target_year:
+            target_year_choice = st.selectbox(
+                "Target Year *", [this_year, this_year + 1]
+            )
+        target_semester = f"{target_term} {target_year_choice}"
+
         subject_choice = st.selectbox(
             "Subject of Interest *", SUBJECT_OPTIONS + ["➕ Type a new value"]
         )
@@ -115,7 +142,8 @@ def show_application_form():
         submitted = st.form_submit_button("Submit Application")
 
         if submitted:
-            if not name or not student_id or not semester_choice or not subject_choice:
+            if (not name or not student_id or not semester_choice
+                    or not subject_choice or not program_choice or not target_term):
                 st.error("Please fill in all required fields marked with *.")
             else:
                 row = {
@@ -124,6 +152,9 @@ def show_application_form():
                     "Student ID": student_id,
                     "Current Semester": semester_choice,
                     "CGPA": cgpa,
+                    "Program": program_choice,
+                    "Credit Hours Completed": credit_hours,
+                    "Target Semester": target_semester,
                     "Subject of Interest": subject_choice,
                     "Prior Experience / Skills": experience,
                     "Decision": "Pending",
@@ -146,7 +177,7 @@ def show_admin_dashboard():
         return
 
     # --- Filters ---
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         semester_filter = st.multiselect(
             "Filter by Semester", sorted(df["Current Semester"].dropna().unique())
@@ -156,6 +187,10 @@ def show_admin_dashboard():
             "Filter by Subject", sorted(df["Subject of Interest"].dropna().unique())
         )
     with col3:
+        program_filter = st.multiselect(
+            "Filter by Program", sorted(df["Program"].dropna().unique())
+        )
+    with col4:
         decision_filter = st.multiselect(
             "Filter by Decision", DECISION_OPTIONS
         )
@@ -165,6 +200,8 @@ def show_admin_dashboard():
         filtered_df = filtered_df[filtered_df["Current Semester"].isin(semester_filter)]
     if subject_filter:
         filtered_df = filtered_df[filtered_df["Subject of Interest"].isin(subject_filter)]
+    if program_filter:
+        filtered_df = filtered_df[filtered_df["Program"].isin(program_filter)]
     if decision_filter:
         filtered_df = filtered_df[filtered_df["Decision"].isin(decision_filter)]
 
