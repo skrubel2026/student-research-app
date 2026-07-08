@@ -220,6 +220,10 @@ def show_new_application_form():
         "Please fill in your details below to apply for an undergraduate or "
         "graduate research position. Applications are reviewed on a rolling basis."
     )
+    st.caption(
+        "📩 After submitting, you'll receive a confirmation email — please check "
+        "your Spam or Junk folder if you don't see it in your inbox within a few minutes."
+    )
 
     with st.form("application_form", clear_on_submit=True):
         name = st.text_input("Full Name *")
@@ -306,7 +310,11 @@ def show_new_application_form():
                 }
                 append_application(row)
                 send_confirmation_email(row)
-                st.success("Your application has been submitted successfully! A confirmation email has been sent.")
+                st.success(
+                    "Your application has been submitted successfully! A confirmation "
+                    "email has been sent — please check your inbox, and also your "
+                    "Spam or Junk folder in case it lands there."
+                )
 
 
 def show_edit_application_form():
