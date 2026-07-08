@@ -81,7 +81,7 @@ def show_application_form():
         "research position. Applications are reviewed on a rolling basis."
     )
 
-  with st.form("application_form", clear_on_submit=True):
+    with st.form("application_form", clear_on_submit=True):
         name = st.text_input("Full Name *")
         student_id = st.text_input("Student ID *")
 
