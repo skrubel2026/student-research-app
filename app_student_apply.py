@@ -310,10 +310,10 @@ def show_new_application_form():
                 }
                 append_application(row)
                 send_confirmation_email(row)
-                st.success(
-                    "Your application has been submitted successfully! A confirmation "
-                    "email has been sent — please check your inbox, and also your "
-                    "Spam or Junk folder in case it lands there."
+                st.success("Your application has been submitted successfully!")
+                st.markdown(
+                    "🔴 **Important:** A confirmation email has been sent — please check "
+                    "your inbox, and also your **Spam or Junk folder** in case it lands there."
                 )
 
 
