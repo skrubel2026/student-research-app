@@ -633,20 +633,32 @@ def show_admin_dashboard():
             key="review_notes",
         )
 
-        if st.button("Save This Student's Decision", type="primary"):
-            old_decision = df.loc[selected_idx, "Decision"]
-            full_df = df.copy()
-            full_df.at[selected_idx, "Decision"] = review_decision
-            full_df.at[selected_idx, "Notes"] = review_notes
-            save_all_decisions(full_df[COLUMNS])
+        save_col, resend_col = st.columns(2)
+        with save_col:
+            if st.button("Save This Student's Decision", type="primary"):
+                old_decision = df.loc[selected_idx, "Decision"]
+                full_df = df.copy()
+                full_df.at[selected_idx, "Decision"] = review_decision
+                full_df.at[selected_idx, "Notes"] = review_notes
+                save_all_decisions(full_df[COLUMNS])
 
-            email_note = ""
-            if old_decision != review_decision and review_decision in (DECISION_SELECTED, DECISION_DENIED):
-                if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_decision):
-                    email_note = " A notification email was sent."
+                email_note = ""
+                if old_decision != review_decision and review_decision in (DECISION_SELECTED, DECISION_DENIED):
+                    if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_decision):
+                        email_note = " A notification email was sent."
 
-            st.success(f"Decision saved for {review_row['Name']}.{email_note}")
-            st.rerun()
+                st.success(f"Decision saved for {review_row['Name']}.{email_note}")
+                st.rerun()
+
+        with resend_col:
+            if st.button("Resend Notification Email"):
+                if review_row["Decision"] in (DECISION_SELECTED, DECISION_DENIED):
+                    if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_row["Decision"]):
+                        st.success(f"Notification email resent to {review_row['Name']}.")
+                    else:
+                        st.error("Could not send the email. Check your Resend API key in secrets.")
+                else:
+                    st.warning("This student's decision is still Pending — nothing to resend yet.")
 
     st.divider()
     st.download_button(
