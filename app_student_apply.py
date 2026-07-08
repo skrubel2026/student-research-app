@@ -6,7 +6,7 @@ from google.oauth2.service_account import Credentials
 import smtplib
 from email.mime.text import MIMEText
 
-st.set_page_config(page_title="Undergrad Research Application", layout="wide")
+st.set_page_config(page_title="Undergraduate and Graduate Research Application", layout="wide")
 
 # ---------------------------------------------------------------------------
 # CONFIG
@@ -63,10 +63,10 @@ def send_email(to_email, subject, body):
 
 
 def send_confirmation_email(row_dict):
-    subject = "Application Received — Undergraduate Research Position"
+    subject = "Application Received — Undergraduate and Graduate Research Position"
     body = (
         f"Dear {row_dict['Name']},\n\n"
-        "Thank you for applying for the undergraduate research position. "
+        "Thank you for applying for the undergraduate/graduate research position. "
         "We have received your application and it will be reviewed shortly.\n\n"
         "You will receive another email once a decision has been made.\n\n"
         f"Regards,\n{SIGNATURE}"
@@ -79,7 +79,7 @@ def send_decision_email(name, email, decision):
         subject = "Research Application — You Have Been Selected"
         body = (
             f"Dear {name},\n\n"
-            "Congratulations! You have been selected for the undergraduate "
+            "Congratulations! You have been selected for the undergraduate/graduate "
             "research position. Further details will follow shortly.\n\n"
             f"Regards,\n{SIGNATURE}"
         )
@@ -87,7 +87,7 @@ def send_decision_email(name, email, decision):
         subject = "Research Application — Update on Your Application"
         body = (
             f"Dear {name},\n\n"
-            "Thank you for your interest in the undergraduate research position. "
+            "Thank you for your interest in the undergraduate/graduate research position. "
             "After careful review, we are unable to offer you a place this semester. "
             "We encourage you to apply again in a future semester.\n\n"
             f"Regards,\n{SIGNATURE}"
@@ -184,7 +184,7 @@ def update_application(student_id, updated_fields):
 # STUDENT-FACING APPLICATION FORM
 # ---------------------------------------------------------------------------
 def show_student_portal():
-    st.title("Undergraduate Research Application")
+    st.title("Undergraduate and Graduate Research Application")
     tab_new, tab_edit = st.tabs(["Submit New Application", "Edit My Application"])
     with tab_new:
         show_new_application_form()
@@ -194,8 +194,8 @@ def show_student_portal():
 
 def show_new_application_form():
     st.write(
-        "Please fill in your details below to apply for an undergraduate "
-        "research position. Applications are reviewed on a rolling basis."
+        "Please fill in your details below to apply for an undergraduate or "
+        "graduate research position. Applications are reviewed on a rolling basis."
     )
 
     with st.form("application_form", clear_on_submit=True):
