@@ -489,10 +489,42 @@ def show_admin_dashboard():
         f"Selected: {(df['Decision'] == 'Selected').sum()} / 4 target slots."
     )
 
+    # --- Color-coded read-only overview (Green = Selected, Red = Denied, Yellow = Pending) ---
+    def _decision_color(val):
+        if val == "Selected":
+            return "background-color: #1e7e34; color: white"
+        elif val == "Denied":
+            return "background-color: #b02a37; color: white"
+        elif val == "Pending":
+            return "background-color: #cc9a06; color: white"
+        return ""
+
+    overview_cols = ["Name", "Student ID", "Decision", "CGPA", "Program",
+                      "Current Semester", "Target Semester", "Subject of Interest"]
+    try:
+        styled_overview = filtered_df[overview_cols].style.map(
+            _decision_color, subset=["Decision"]
+        )
+    except AttributeError:
+        # Older pandas versions only have the (deprecated) applymap method
+        styled_overview = filtered_df[overview_cols].style.applymap(
+            _decision_color, subset=["Decision"]
+        )
+    st.dataframe(styled_overview, use_container_width=True, hide_index=True)
+
     st.write("Edit the **Decision** column below, then click **Save Decisions**.")
+
+    # Name is placed right next to Decision so it never scrolls out of view
+    # while you're changing decisions.
+    editor_column_order = [
+        "Name", "Decision", "Student ID", "Email", "CGPA", "Program",
+        "Current Semester", "Target Semester", "Subject of Interest",
+        "Credit Hours Completed", "Prior Experience / Skills", "Timestamp", "Notes",
+    ]
 
     edited = st.data_editor(
         filtered_df,
+        column_order=editor_column_order,
         column_config={
             "Decision": st.column_config.SelectboxColumn(
                 "Decision", options=DECISION_OPTIONS, required=True
