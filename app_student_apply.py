@@ -511,9 +511,9 @@ def show_admin_dashboard():
     # Name is placed right next to Decision so it never scrolls out of view
     # while you're changing decisions.
     editor_column_order = [
-        "Name", "Decision", "Student ID", "Email", "CGPA", "Program",
+        "Timestamp", "Name", "Student ID", "Decision", "Email", "CGPA", "Program",
         "Current Semester", "Target Semester", "Subject of Interest",
-        "Credit Hours Completed", "Prior Experience / Skills", "Timestamp", "Notes",
+        "Credit Hours Completed", "Prior Experience / Skills", "Notes",
     ]
 
     edited = st.data_editor(
