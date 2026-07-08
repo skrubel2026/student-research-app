@@ -26,7 +26,21 @@ SUBJECT_OPTIONS = [
     "Clinical Pharmacy", "Microbiology", "Biochemistry"
 ]
 PROGRAM_OPTIONS = ["BPharm", "MPharm"]
-DECISION_OPTIONS = ["Pending", "Selected", "Denied"]
+DECISION_PENDING = "🟡 Pending"
+DECISION_SELECTED = "🟢 Selected"
+DECISION_DENIED = "🔴 Denied"
+DECISION_OPTIONS = [DECISION_PENDING, DECISION_SELECTED, DECISION_DENIED]
+
+
+def normalize_decision(val):
+    """Maps any legacy plain-text decision value (from before color-coding
+    was added) to the new emoji-coded version, so old and new rows display
+    and compare consistently."""
+    val = str(val).strip()
+    if val in DECISION_OPTIONS:
+        return val
+    mapping = {"Pending": DECISION_PENDING, "Selected": DECISION_SELECTED, "Denied": DECISION_DENIED}
+    return mapping.get(val, DECISION_PENDING)
 
 # ---------------------------------------------------------------------------
 # EMAIL NOTIFICATIONS
@@ -75,7 +89,7 @@ def send_confirmation_email(row_dict):
 
 
 def send_decision_email(name, email, decision):
-    if decision == "Selected":
+    if decision == DECISION_SELECTED:
         subject = "Research Application — You Have Been Selected"
         body = (
             f"Dear {name},\n\n"
@@ -83,7 +97,7 @@ def send_decision_email(name, email, decision):
             "research position. Further details will follow shortly.\n\n"
             f"Regards,\n{SIGNATURE}"
         )
-    elif decision == "Denied":
+    elif decision == DECISION_DENIED:
         subject = "Research Application — Update on Your Application"
         body = (
             f"Dear {name},\n\n"
@@ -276,7 +290,7 @@ def show_new_application_form():
                     "Target Semester": target_semester,
                     "Subject of Interest": subject_choice,
                     "Prior Experience / Skills": experience,
-                    "Decision": "Pending",
+                    "Decision": DECISION_PENDING,
                     "Notes": "",
                 }
                 append_application(row)
@@ -318,10 +332,10 @@ def show_edit_application_form():
         return
 
     st.success(f"Application found for {row['Name']}. Update any fields below.")
-    if row.get("Decision") and row["Decision"] != "Pending":
+    if row.get("Decision") and normalize_decision(row["Decision"]) != DECISION_PENDING:
         st.info(
             f"Note: a decision has already been recorded for this application "
-            f"(current status: {row['Decision']}). Editing details will not change that status."
+            f"(current status: {normalize_decision(row['Decision'])}). Editing details will not change that status."
         )
 
     with st.form("edit_form"):
@@ -452,6 +466,9 @@ def show_admin_dashboard():
         st.info("No applications submitted yet.")
         return
 
+    # Normalize any legacy plain-text Decision values to the new color-coded ones
+    df["Decision"] = df["Decision"].apply(normalize_decision)
+
     # --- Filters ---
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -486,31 +503,8 @@ def show_admin_dashboard():
 
     st.caption(
         f"Showing {len(filtered_df)} of {len(df)} total applications. "
-        f"Selected: {(df['Decision'] == 'Selected').sum()} / 4 target slots."
+        f"Selected: {(df['Decision'] == DECISION_SELECTED).sum()} / 4 target slots."
     )
-
-    # --- Color-coded read-only overview (Green = Selected, Red = Denied, Yellow = Pending) ---
-    def _decision_color(val):
-        if val == "Selected":
-            return "background-color: #1e7e34; color: white"
-        elif val == "Denied":
-            return "background-color: #b02a37; color: white"
-        elif val == "Pending":
-            return "background-color: #cc9a06; color: white"
-        return ""
-
-    overview_cols = ["Name", "Student ID", "Decision", "CGPA", "Program",
-                      "Current Semester", "Target Semester", "Subject of Interest"]
-    try:
-        styled_overview = filtered_df[overview_cols].style.map(
-            _decision_color, subset=["Decision"]
-        )
-    except AttributeError:
-        # Older pandas versions only have the (deprecated) applymap method
-        styled_overview = filtered_df[overview_cols].style.applymap(
-            _decision_color, subset=["Decision"]
-        )
-    st.dataframe(styled_overview, use_container_width=True, hide_index=True)
 
     st.write("Edit the **Decision** column below, then click **Save Decisions**.")
 
@@ -544,7 +538,7 @@ def show_admin_dashboard():
         for idx in edited.index:
             old_decision = df.loc[idx, "Decision"] if idx in df.index else None
             new_decision = edited.loc[idx, "Decision"]
-            if old_decision != new_decision and new_decision in ("Selected", "Denied"):
+            if old_decision != new_decision and new_decision in (DECISION_SELECTED, DECISION_DENIED):
                 changed_rows.append({
                     "name": edited.loc[idx, "Name"],
                     "email": edited.loc[idx, "Email"],
