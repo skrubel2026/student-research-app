@@ -85,11 +85,17 @@ def show_application_form():
         name = st.text_input("Full Name *")
         student_id = st.text_input("Student ID *")
 
-        semester_choice = st.selectbox(
-            "Current Semester *", SEMESTER_OPTIONS + ["➕ Type a new value"]
-        )
-        if semester_choice == "➕ Type a new value":
-            semester_choice = st.text_input("Enter your current semester")
+      col_sem, col_year = st.columns(2)
+        with col_sem:
+            semester_term = st.selectbox(
+                "Semester Term *", SEMESTER_OPTIONS + ["➕ Type a new value"]
+            )
+            if semester_term == "➕ Type a new value":
+                semester_term = st.text_input("Enter semester term")
+        with col_year:
+            this_year = datetime.now().year
+            year_choice = st.selectbox("Year *", [this_year, this_year + 1])
+        semester_choice = f"{semester_term} {year_choice}"
 
         cgpa = st.number_input(
             "CGPA *", min_value=0.0, max_value=4.0, step=0.01, format="%.2f"
