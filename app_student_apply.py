@@ -224,6 +224,13 @@ def show_new_application_form():
         "📩 After submitting, you'll receive a confirmation email — please check "
         "your Spam or Junk folder if you don't see it in your inbox within a few minutes."
     )
+    st.markdown(
+        "**Before you submit, please double-check the following:**\n"
+        "- Enter your **full name** exactly as it appears on your student ID.\n"
+        "- Enter your **complete Student ID**.\n"
+        "- Enter your **email address exactly as it is** — double-check spelling and capitalization.\n"
+        "- Enter a **phone number that is currently active and in use**.\n"
+    )
 
     with st.form("application_form", clear_on_submit=True):
         name = st.text_input("Full Name *")
