@@ -15,7 +15,7 @@ SHEET_NAME = "Research_Applications"   # Name of the Google Sheet (spreadsheet f
 WORKSHEET_NAME = "Applications"        # Name of the tab inside that spreadsheet
 
 COLUMNS = [
-    "Timestamp", "Name", "Student ID", "Email", "Current Semester", "CGPA",
+    "Timestamp", "Name", "Student ID", "Email", "Phone Number", "Current Semester", "CGPA",
     "Program", "Credit Hours Completed", "Target Semester",
     "Subject of Interest", "Prior Experience / Skills", "Decision", "Notes"
 ]
@@ -219,6 +219,7 @@ def show_new_application_form():
         name = st.text_input("Full Name *")
         student_id = st.text_input("Student ID *")
         email = st.text_input("Email Address *", placeholder="you@example.com")
+        phone_number = st.text_input("Phone Number *", placeholder="01XXXXXXXXX")
 
         col_sem, col_year = st.columns(2)
         with col_sem:
@@ -275,7 +276,7 @@ def show_new_application_form():
         submitted = st.form_submit_button("Submit Application")
 
         if submitted:
-            if (not name or not student_id or not email or not semester_choice
+            if (not name or not student_id or not email or not phone_number or not semester_choice
                     or not subject_choice or not program_choice or not target_term):
                 st.error("Please fill in all required fields marked with *.")
             elif "@" not in email or "." not in email:
@@ -286,6 +287,7 @@ def show_new_application_form():
                     "Name": name,
                     "Student ID": student_id,
                     "Email": email,
+                    "Phone Number": phone_number,
                     "Current Semester": semester_choice,
                     "CGPA": cgpa,
                     "Program": program_choice,
@@ -348,6 +350,11 @@ def show_edit_application_form():
             value=row.get("Email", ""),
             placeholder="you@example.com",
             help="Add this if it wasn't captured when you first applied — it's needed so you can receive updates.",
+        )
+        phone_number = st.text_input(
+            "Phone Number *",
+            value=row.get("Phone Number", ""),
+            placeholder="01XXXXXXXXX",
         )
 
         col_sem, col_year = st.columns(2)
@@ -430,7 +437,8 @@ def show_edit_application_form():
         update_clicked = st.form_submit_button("Update Application")
 
         if update_clicked:
-            if not name or not email or not semester_choice or not subject_choice or not program_choice or not target_term:
+            if (not name or not email or not phone_number or not semester_choice
+                    or not subject_choice or not program_choice or not target_term):
                 st.error("Please fill in all required fields marked with *.")
             elif "@" not in email or "." not in email:
                 st.error("Please enter a valid email address.")
@@ -438,6 +446,7 @@ def show_edit_application_form():
                 updated_fields = {
                     "Name": name,
                     "Email": email,
+                    "Phone Number": phone_number,
                     "Current Semester": semester_choice,
                     "CGPA": cgpa,
                     "Program": program_choice,
@@ -514,7 +523,7 @@ def show_admin_dashboard():
     # Name is placed right next to Decision so it never scrolls out of view
     # while you're changing decisions.
     editor_column_order = [
-        "Timestamp", "Name", "Student ID", "Decision", "Email", "CGPA", "Program",
+        "Timestamp", "Name", "Student ID", "Decision", "Email", "Phone Number", "CGPA", "Program",
         "Current Semester", "Target Semester", "Subject of Interest",
         "Credit Hours Completed", "Prior Experience / Skills", "Notes",
     ]
@@ -595,6 +604,7 @@ def show_admin_dashboard():
         detail_col1, detail_col2 = st.columns(2)
         with detail_col1:
             st.write(f"**Email:** {review_row.get('Email', '') or '—'}")
+            st.write(f"**Phone Number:** {review_row.get('Phone Number', '') or '—'}")
             st.write(f"**Program:** {review_row.get('Program', '')}")
             st.write(f"**CGPA:** {review_row.get('CGPA', '')}")
             st.write(f"**Credit Hours Completed:** {review_row.get('Credit Hours Completed', '')}")
