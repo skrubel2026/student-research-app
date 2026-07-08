@@ -505,25 +505,23 @@ def show_admin_dashboard():
     )
 
     if st.button("Save Decisions", type="primary"):
-        # Merge edits back into the full (unfiltered) dataset before saving
-        full_df = df.set_index("Student ID")
-        edits_df = edited.set_index("Student ID")
-
-        # Detect which rows actually changed Decision, so we only email those
+        # Use the DataFrame's own row index (not Student ID) to match edited
+        # rows back to the original data — this stays correct even if two
+        # rows happen to share the same Student ID.
         changed_rows = []
-        for sid in edits_df.index:
-            old_decision = full_df.loc[sid, "Decision"] if sid in full_df.index else None
-            new_decision = edits_df.loc[sid, "Decision"]
+        for idx in edited.index:
+            old_decision = df.loc[idx, "Decision"] if idx in df.index else None
+            new_decision = edited.loc[idx, "Decision"]
             if old_decision != new_decision and new_decision in ("Selected", "Denied"):
                 changed_rows.append({
-                    "name": edits_df.loc[sid, "Name"],
-                    "email": edits_df.loc[sid, "Email"],
+                    "name": edited.loc[idx, "Name"],
+                    "email": edited.loc[idx, "Email"],
                     "decision": new_decision,
                 })
 
-        full_df.update(edits_df)
-        full_df = full_df.reset_index()[COLUMNS]
-        save_all_decisions(full_df)
+        full_df = df.copy()
+        full_df.update(edited)
+        save_all_decisions(full_df[COLUMNS])
 
         sent_count = 0
         for r in changed_rows:
