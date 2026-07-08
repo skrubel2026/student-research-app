@@ -3,8 +3,7 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
-import smtplib
-from email.mime.text import MIMEText
+import requests
 
 st.set_page_config(page_title="Undergraduate and Graduate Research Application", layout="wide")
 
@@ -53,25 +52,32 @@ SIGNATURE = (
 )
 
 
+RESEND_SENDER_ADDRESS = "onboarding@resend.dev"  # Resend's free shared sending address
+
+
 def send_email(to_email, subject, body):
-    """Sends an email via Yahoo Mail SMTP using credentials stored in secrets.
+    """Sends an email via the Resend API using an API key stored in secrets.
+    No personal mailbox or app password is needed — just the API key.
     Fails silently (returns False) rather than crashing the app, since a
     student's submission or a supervisor's save shouldn't be blocked by an
     email hiccup."""
     try:
-        sender_email = st.secrets["sender_email"]
-        sender_app_password = st.secrets["sender_app_password"]
-
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = f"{SENDER_DISPLAY_NAME} <{sender_email}>"
-        msg["To"] = to_email
-
-        with smtplib.SMTP("smtp.mail.yahoo.com", 587) as server:
-            server.starttls()
-            server.login(sender_email, sender_app_password)
-            server.sendmail(sender_email, [to_email], msg.as_string())
-        return True
+        api_key = st.secrets["resend_api_key"]
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": f"{SENDER_DISPLAY_NAME} <{RESEND_SENDER_ADDRESS}>",
+                "to": [to_email],
+                "subject": subject,
+                "text": body,
+            },
+            timeout=10,
+        )
+        return response.status_code in (200, 201)
     except Exception:
         return False
 
