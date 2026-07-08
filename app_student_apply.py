@@ -561,6 +561,75 @@ def show_admin_dashboard():
         st.rerun()
 
     st.divider()
+    st.subheader("Review One Student at a Time")
+    st.write(
+        "Pick a student below to see their full application in one place "
+        "and record a decision — no scrolling required."
+    )
+
+    if filtered_df.empty:
+        st.info("No applications match the current filters.")
+    else:
+        options = filtered_df.index.tolist()
+
+        def _label(idx):
+            r = filtered_df.loc[idx]
+            return f"{r['Name']} — {r['Student ID']} ({r['Decision']})"
+
+        selected_idx = st.selectbox(
+            "Select a student", options, format_func=_label, key="review_select"
+        )
+        review_row = filtered_df.loc[selected_idx]
+
+        st.markdown(
+            f"<div style='background-color:#b02a37; color:white; padding:12px 16px; "
+            f"border-radius:6px; font-weight:bold; font-size:1.1em; margin-bottom:12px;'>"
+            f"Currently reviewing: {review_row['Name']} (Student ID: {review_row['Student ID']})"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+
+        detail_col1, detail_col2 = st.columns(2)
+        with detail_col1:
+            st.write(f"**Email:** {review_row.get('Email', '') or '—'}")
+            st.write(f"**Program:** {review_row.get('Program', '')}")
+            st.write(f"**CGPA:** {review_row.get('CGPA', '')}")
+            st.write(f"**Credit Hours Completed:** {review_row.get('Credit Hours Completed', '')}")
+        with detail_col2:
+            st.write(f"**Current Semester:** {review_row.get('Current Semester', '')}")
+            st.write(f"**Target Semester:** {review_row.get('Target Semester', '')}")
+            st.write(f"**Subject of Interest:** {review_row.get('Subject of Interest', '')}")
+            st.write(f"**Submitted:** {review_row.get('Timestamp', '')}")
+
+        st.write(f"**Prior Experience / Skills:** {review_row.get('Prior Experience / Skills', '') or '—'}")
+
+        review_decision = st.selectbox(
+            "Decision", DECISION_OPTIONS,
+            index=DECISION_OPTIONS.index(review_row["Decision"]) if review_row["Decision"] in DECISION_OPTIONS else 0,
+            key="review_decision",
+        )
+        review_notes = st.text_area(
+            "Notes (optional, only your supervisor sees this)",
+            value=review_row.get("Notes", "") or "",
+            key="review_notes",
+        )
+
+        if st.button("Save This Student's Decision", type="primary"):
+            old_decision = df.loc[selected_idx, "Decision"]
+            full_df = df.copy()
+            full_df.at[selected_idx, "Decision"] = review_decision
+            full_df.at[selected_idx, "Notes"] = review_notes
+            save_all_decisions(full_df[COLUMNS])
+
+            email_note = ""
+            if old_decision != review_decision and review_decision in (DECISION_SELECTED, DECISION_DENIED):
+                if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_decision):
+                    email_note = " A notification email was sent."
+
+            st.success(f"Decision saved for {review_row['Name']}.{email_note}")
+            st.rerun()
+
+    st.divider()
     st.download_button(
         "Download all applications as CSV",
         df.to_csv(index=False).encode("utf-8"),
