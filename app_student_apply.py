@@ -3,8 +3,7 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
-import smtplib
-from email.mime.text import MIMEText
+import requests
 
 st.set_page_config(page_title="Undergraduate and Graduate Research Application", layout="wide")
 
@@ -26,6 +25,7 @@ SUBJECT_OPTIONS = [
     "Clinical Pharmacy", "Microbiology", "Biochemistry"
 ]
 PROGRAM_OPTIONS = ["BPharm", "MPharm"]
+
 DECISION_PENDING = "🟡 Pending"
 DECISION_SELECTED = "🟢 Selected"
 DECISION_DENIED = "🔴 Denied"
@@ -42,8 +42,9 @@ def normalize_decision(val):
     mapping = {"Pending": DECISION_PENDING, "Selected": DECISION_SELECTED, "Denied": DECISION_DENIED}
     return mapping.get(val, DECISION_PENDING)
 
+
 # ---------------------------------------------------------------------------
-# EMAIL NOTIFICATIONS
+# EMAIL NOTIFICATIONS (via Resend API — no personal mailbox needed)
 # ---------------------------------------------------------------------------
 SENDER_DISPLAY_NAME = "Dr. Ferdous Khan"
 SIGNATURE = (
@@ -51,27 +52,32 @@ SIGNATURE = (
     "Associate Professor\n"
     "Department of Pharmaceutical Sciences"
 )
+RESEND_SENDER_ADDRESS = "onboarding@resend.dev"  # Resend's free shared sending address
 
 
 def send_email(to_email, subject, body):
-    """Sends an email via Yahoo Mail SMTP using credentials stored in secrets.
+    """Sends an email via the Resend API using an API key stored in secrets.
+    No personal mailbox or app password is needed — just the API key.
     Fails silently (returns False) rather than crashing the app, since a
     student's submission or a supervisor's save shouldn't be blocked by an
     email hiccup."""
     try:
-        sender_email = st.secrets["sender_email"]
-        sender_app_password = st.secrets["sender_app_password"]
-
-        msg = MIMEText(body)
-        msg["Subject"] = subject
-        msg["From"] = f"{SENDER_DISPLAY_NAME} <{sender_email}>"
-        msg["To"] = to_email
-
-        with smtplib.SMTP("smtp.mail.yahoo.com", 587) as server:
-            server.starttls()
-            server.login(sender_email, sender_app_password)
-            server.sendmail(sender_email, [to_email], msg.as_string())
-        return True
+        api_key = st.secrets["resend_api_key"]
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": f"{SENDER_DISPLAY_NAME} <{RESEND_SENDER_ADDRESS}>",
+                "to": [to_email],
+                "subject": subject,
+                "text": body,
+            },
+            timeout=10,
+        )
+        return response.status_code in (200, 201)
     except Exception:
         return False
 
@@ -214,6 +220,17 @@ def show_new_application_form():
         "Please fill in your details below to apply for an undergraduate or "
         "graduate research position. Applications are reviewed on a rolling basis."
     )
+    st.caption(
+        "📩 After submitting, you'll receive a confirmation email — please check "
+        "your Spam or Junk folder if you don't see it in your inbox within a few minutes."
+    )
+    st.markdown(
+        "**Before you submit, please double-check the following:**\n"
+        "- Enter your **full name** exactly as it appears on your student ID.\n"
+        "- Enter your **complete Student ID**.\n"
+        "- Enter your **email address exactly as it is** — double-check spelling and capitalization.\n"
+        "- Enter a **phone number that is currently active and in use**.\n"
+    )
 
     with st.form("application_form", clear_on_submit=True):
         name = st.text_input("Full Name *")
@@ -301,7 +318,11 @@ def show_new_application_form():
                 }
                 append_application(row)
                 send_confirmation_email(row)
-                st.success("Your application has been submitted successfully! A confirmation email has been sent.")
+                st.success("Your application has been submitted successfully!")
+                st.markdown(
+                    "🔴 **Important:** A confirmation email has been sent — please check "
+                    "your inbox, and also your **Spam or Junk folder** in case it lands there."
+                )
 
 
 def show_edit_application_form():
@@ -637,20 +658,32 @@ def show_admin_dashboard():
             key="review_notes",
         )
 
-        if st.button("Save This Student's Decision", type="primary"):
-            old_decision = df.loc[selected_idx, "Decision"]
-            full_df = df.copy()
-            full_df.at[selected_idx, "Decision"] = review_decision
-            full_df.at[selected_idx, "Notes"] = review_notes
-            save_all_decisions(full_df[COLUMNS])
+        save_col, resend_col = st.columns(2)
+        with save_col:
+            if st.button("Save This Student's Decision", type="primary"):
+                old_decision = df.loc[selected_idx, "Decision"]
+                full_df = df.copy()
+                full_df.at[selected_idx, "Decision"] = review_decision
+                full_df.at[selected_idx, "Notes"] = review_notes
+                save_all_decisions(full_df[COLUMNS])
 
-            email_note = ""
-            if old_decision != review_decision and review_decision in (DECISION_SELECTED, DECISION_DENIED):
-                if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_decision):
-                    email_note = " A notification email was sent."
+                email_note = ""
+                if old_decision != review_decision and review_decision in (DECISION_SELECTED, DECISION_DENIED):
+                    if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_decision):
+                        email_note = " A notification email was sent."
 
-            st.success(f"Decision saved for {review_row['Name']}.{email_note}")
-            st.rerun()
+                st.success(f"Decision saved for {review_row['Name']}.{email_note}")
+                st.rerun()
+
+        with resend_col:
+            if st.button("Resend Notification Email"):
+                if review_row["Decision"] in (DECISION_SELECTED, DECISION_DENIED):
+                    if send_decision_email(review_row["Name"], review_row.get("Email", ""), review_row["Decision"]):
+                        st.success(f"Notification email resent to {review_row['Name']}.")
+                    else:
+                        st.error("Could not send the email. Check your Resend API key in secrets.")
+                else:
+                    st.warning("This student's decision is still Pending — nothing to resend yet.")
 
     st.divider()
     st.download_button(
