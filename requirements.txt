@@ -1,7 +1,6 @@
 streamlit==1.59.1
-pandas==2.2.3
-numpy==1.26.4
-pyarrow==16.1.0
+pandas
+numpy
 gspread==6.1.2
 google-auth==2.32.0
 requests==2.32.3
